@@ -1,5 +1,5 @@
 import json
-import asyncio
+import mlflow
 from pydantic import BaseModel
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
@@ -16,6 +16,9 @@ class QueryRequest(BaseModel):
 app = FastAPI()
 langgraph_app = None
 
+mlflow.set_tracking_uri("http://127.0.0.1:5000")
+mlflow.set_experiment("langgraph-traces")
+mlflow.langchain.autolog()
 
 def serialize_message(msg: BaseMessage):
     return {
