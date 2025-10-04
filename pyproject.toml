@@ -1,0 +1,5 @@
+[project]
+name = "langgraph-project"
+description = "A Python project using langgraph and related packages."
+version = "0.1.0"
+

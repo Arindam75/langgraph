@@ -1,0 +1,8 @@
+.env
+experiments/
+__pycache__/
+*.pyc
+vectordb/
+config/
+.venv/
+*/*.ipynb
