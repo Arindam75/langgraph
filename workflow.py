@@ -3,11 +3,9 @@ from typing import Any
 
 import os
 from langgraph.graph import MessagesState, StateGraph, START, END
-from langchain_core.messages import AIMessage, HumanMessage, RemoveMessage, SystemMessage, RemoveMessage
+from langchain_core.messages import AIMessage, HumanMessage, RemoveMessage, SystemMessage
 from langchain_openai import ChatOpenAI
-#from langgraph.checkpoint.memory import MemorySaver
 from pydantic import Field
-#from langgraph.checkpoint.mysql.aio import AIOMySQLSaver
 from bedrock_agentcore.memory import MemoryClient
 from langgraph_checkpoint_aws import AgentCoreMemorySaver
 from dotenv import load_dotenv
@@ -17,20 +15,11 @@ load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 MODEL_ID = os.getenv("MODEL_ID")
-#EMBEDDING_MODEL_ID = os.getenv("EMBEDDING_MODEL_ID")
-#DB_HOST = os.getenv("DB_HOST")
-#DB_USER = os.getenv("DB_USER")
-#DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_NAME = os.getenv("DB_NAME")
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 
 
 model = ChatOpenAI(model=MODEL_ID, api_key=OPENAI_API_KEY)
-# mysql_uri = f"mysql://{DB_USER}:{DB_PASSWORD}@localhost:3306/{DB_NAME}"
-# memory_cm = None
-# memory = None
-
 memory_client = None
 checkpointer = None
 
@@ -93,16 +82,19 @@ def build_workflow() -> StateGraph:
 
 
 async def build_app() -> Any:
-    memory_name = "simple_chkpointer"
-    client = MemoryClient(region_name='ap-south-1')
+    global memory_client, checkpointer
 
-    # If create_or_get_memory is sync, wrap it in a thread executor
-    loop = asyncio.get_event_loop()
-    memory = await loop.run_in_executor(None, client.create_or_get_memory, memory_name)
+    if checkpointer is None:
+        memory_name = "simple_chkpointer"
+        memory_client = MemoryClient(region_name='ap-south-1')
 
-    memory_id = memory["id"]
-    print(f"Using memory id: {memory_id}")
-    checkpointer = AgentCoreMemorySaver(memory_id, region_name='ap-south-1')
+        # Wrap sync call in executor to avoid blocking
+        loop = asyncio.get_event_loop()
+        memory = await loop.run_in_executor(None, memory_client.create_or_get_memory, memory_name)
+
+        memory_id = memory["id"]
+        print(f"Using memory id: {memory_id}")
+        checkpointer = AgentCoreMemorySaver(memory_id, region_name='ap-south-1')
 
     workflow = build_workflow()
     return workflow.compile(checkpointer=checkpointer)
@@ -110,8 +102,8 @@ async def build_app() -> Any:
 
 async def close_app():
     print("Shutting Down")
-    global memory_cm, memory
-    if memory_cm is not None:
-        await memory_cm.__aexit__(None, None, None)
-        memory_cm = None
-        memory = None
+    global memory_client, checkpointer
+
+    # No async teardown needed for AgentCoreMemorySaver
+    memory_client = None
+    checkpointer = None
