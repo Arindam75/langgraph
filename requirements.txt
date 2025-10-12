@@ -19,3 +19,7 @@ pymysql
 mysql-connector-python
 uvicorn
 nest_asyncio
+boto3
+langchain_aws
+bedrock_agentcore
+langgraph-checkpoint-aws

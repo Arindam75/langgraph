@@ -7,23 +7,32 @@ from langchain_core.messages import AIMessage, HumanMessage, RemoveMessage, Syst
 from langchain_openai import ChatOpenAI
 #from langgraph.checkpoint.memory import MemorySaver
 from pydantic import Field
-from langgraph.checkpoint.mysql.aio import AIOMySQLSaver
+#from langgraph.checkpoint.mysql.aio import AIOMySQLSaver
+from bedrock_agentcore.memory import MemoryClient
+from langgraph_checkpoint_aws import AgentCoreMemorySaver
 from dotenv import load_dotenv
+import asyncio
+
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 MODEL_ID = os.getenv("MODEL_ID")
-EMBEDDING_MODEL_ID = os.getenv("EMBEDDING_MODEL_ID")
-DB_HOST = os.getenv("DB_HOST")
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
+#EMBEDDING_MODEL_ID = os.getenv("EMBEDDING_MODEL_ID")
+#DB_HOST = os.getenv("DB_HOST")
+#DB_USER = os.getenv("DB_USER")
+#DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_NAME = os.getenv("DB_NAME")
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 
 
 model = ChatOpenAI(model=MODEL_ID, api_key=OPENAI_API_KEY)
-mysql_uri = f"mysql://{DB_USER}:{DB_PASSWORD}@localhost:3306/{DB_NAME}"
-memory_cm = None
-memory = None
+# mysql_uri = f"mysql://{DB_USER}:{DB_PASSWORD}@localhost:3306/{DB_NAME}"
+# memory_cm = None
+# memory = None
+
+memory_client = None
+checkpointer = None
 
 
 class MyState(MessagesState):
@@ -84,15 +93,19 @@ def build_workflow() -> StateGraph:
 
 
 async def build_app() -> Any:
-    global memory_cm, memory
-    if memory is None:
-        # Create the async context manager
-        memory_cm = AIOMySQLSaver.from_conn_string(mysql_uri)
-        memory = await memory_cm.__aenter__()
-        await memory.setup()
+    memory_name = "simple_chkpointer"
+    client = MemoryClient(region_name='ap-south-1')
+
+    # If create_or_get_memory is sync, wrap it in a thread executor
+    loop = asyncio.get_event_loop()
+    memory = await loop.run_in_executor(None, client.create_or_get_memory, memory_name)
+
+    memory_id = memory["id"]
+    print(f"Using memory id: {memory_id}")
+    checkpointer = AgentCoreMemorySaver(memory_id, region_name='ap-south-1')
 
     workflow = build_workflow()
-    return workflow.compile(checkpointer=memory)
+    return workflow.compile(checkpointer=checkpointer)
 
 
 async def close_app():

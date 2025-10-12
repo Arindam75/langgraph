@@ -11,6 +11,7 @@ from workflow import build_app, close_app
 class QueryRequest(BaseModel):
     query: str
     thread_id: str = "1"
+    actor_id: str = "andrew"
 
 
 app = FastAPI()
@@ -59,7 +60,7 @@ async def shutdown_event():
 async def query_endpoint(request: QueryRequest):
     config = {
         "recursion_limit": 10,
-        "configurable": {"thread_id": request.thread_id}
+        "configurable": {"thread_id": request.thread_id, "actor_id": request.actor_id}
     }
 
     # IMPORTANT: use the key your graph expects (commonly "messages", not "message")
