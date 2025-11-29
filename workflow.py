@@ -4,7 +4,8 @@ from typing import Any
 import os
 from langgraph.graph import MessagesState, StateGraph, START, END
 from langchain_core.messages import AIMessage, HumanMessage, RemoveMessage, SystemMessage
-from langchain_openai import ChatOpenAI
+#from langchain_openai import ChatOpenAI
+from langchain_aws.chat_models import ChatBedrock
 from pydantic import Field
 from bedrock_agentcore.memory import MemoryClient
 from langgraph_checkpoint_aws import AgentCoreMemorySaver
@@ -13,13 +14,21 @@ import asyncio
 
 load_dotenv()
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+#OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 MODEL_ID = os.getenv("MODEL_ID")
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+#model = ChatOpenAI(model=MODEL_ID, api_key=OPENAI_API_KEY)
 
+model = ChatBedrock(
+    model_id=MODEL_ID,
+    region_name="ap-south-1",
+    model_kwargs={
+        "temperature": 0.7,
+        # Other optional Bedrock parameters like 'topP', 'maxTokenCount' etc.
+    },
+)
 
-model = ChatOpenAI(model=MODEL_ID, api_key=OPENAI_API_KEY)
 memory_client = None
 checkpointer = None
 

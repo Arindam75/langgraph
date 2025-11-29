@@ -7,6 +7,11 @@ from langchain_core.messages import HumanMessage, BaseMessage
 from typing import Dict, Any, AsyncGenerator
 from workflow import build_app, close_app
 from opentelemetry import trace
+from openinference.instrumentation.bedrock import BedrockInstrumentor
+BedrockInstrumentor().instrument()
+
+from openinference.instrumentation.langchain import LangChainInstrumentor
+LangChainInstrumentor().instrument()
 
 class QueryRequest(BaseModel):
     query: str
